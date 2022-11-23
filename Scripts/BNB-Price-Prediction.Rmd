@@ -1,0 +1,52 @@
+---
+title: "BNB-Price-Prediction-Project"
+author: "Shrey Jaradi"
+date: "2022-11-23"
+output: html_document
+---
+
+```{r}
+library('dplyr')
+library('lubridate')
+library('tidyverse')
+library('ggplot2')
+```
+
+
+```{r}
+bnb_df = read.csv(file='../data/AB_NYC_2019.csv') 
+head(bnb_df)
+```
+```{r}
+dim(bnb_df)
+```
+```{r}
+summary.default(bnb_df)
+```
+
+**name :** Name of the Place 
+**host_name :** It's a host name - name of owner  - not much important          
+**neighbourhood_group :** This also we can convert to dummy variable -as this is also important- there are certain negihbourhood where price is varies  
+**neighbourhood :** There are so many values if we create dummy variable for this, it's gonna create so much feature better to ignore this column            
+**Room Type :**  we can convert to Dummy variable as there are three Room Type and it will help us as this is much relevant column 
+**last_review  :** This is date column we can convert it to datetime column. 
+
+```{r}
+cat("Room Type : ", unique(bnb_df$room_type))
+cat("\nNeighbourhood group : ",unique(bnb_df$neighbourhood_group))
+```
+ 
+Let's try to understand the statistics by Room Type , As we are trying to predict price , Let's check what are the minimum, maximum, average price according to room type and neighbourhood group
+
+Manhattan is costliest area, their average price is almoot $250.
+```{r}
+options(dplyr.summarise.inform = FALSE)
+bnb_df %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_price = min(price), avg_price = mean(price),max_price = max(price))
+```
+ 
+```{r}
+
+```
+
+ 
+
