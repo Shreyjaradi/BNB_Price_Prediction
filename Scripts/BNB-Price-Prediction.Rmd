@@ -7,9 +7,9 @@ output: html_document
 
 ```{r}
 library('dplyr')
-library('lubridate')
 library('tidyverse')
 library('ggplot2')
+library('ggmap')
 ```
 
 
@@ -63,17 +63,40 @@ Manhattan is costliest area, their average price is almoot $250.
 options(dplyr.summarise.inform = FALSE)
 bnb_df %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_price = min(price), avg_price = mean(price),max_price = max(price))
 ```
-Converting "last_review" column to datetime column
+
+
+
 ```{r}
-bnb_df[['last_review']] = strptime(bnb_df[['last_review']],format = "%Y-%m-%d")
+ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  theme_classic() +
+  labs(title = "NYC Airbnb Neighbourhood vs Price", x = "Neighbourhood", y = "Price") +
+  theme(plot.title = element_text(face = "bold"))
 ```
+
+```{r}
+
+ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
+  labs(title = "NYC Airbnb Neighbourhood vs Price", x = "Neighbourhood", y = "Price") +
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+
+
+
 
 Need to convert the categorical data to level 
 ```{r}
-bnb_df[, c('neighbourhood_group', 'room_type', 'last_review')] = sapply(bnb_df[, c('neighbourhood_group', 'room_type', 'last_review')], unclass)
+bnb_df[, c('neighbourhood_group', 'room_type')] = sapply(bnb_df[, c('neighbourhood_group', 'room_type')],unclass)
 ```
 
 ```{r}
+summary.default(bnb_df)
+```
+
+```{r}
+head(bnb_df)
 ```
 
 
