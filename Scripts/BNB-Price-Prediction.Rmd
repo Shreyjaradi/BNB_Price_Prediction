@@ -35,6 +35,26 @@ summary.default(bnb_df)
 cat("Room Type : ", unique(bnb_df$room_type))
 cat("\nNeighbourhood group : ",unique(bnb_df$neighbourhood_group))
 ```
+
+
+There are 1052 missing values in "reviews_per_month" and "last_review" column,
+as this are the column for datetime and number of reviews  last_review, 
+we can replace it with NA for last_review and 0 for reviews_per_month.
+```{r}
+colSums(is.na(bnb_df))
+```
+
+```{r}
+bnb_df['last_review'][is.na(bnb_df['last_review'])] = 'NA'
+bnb_df['reviews_per_month'][is.na(bnb_df['reviews_per_month'])] = 0
+
+```
+
+```{r}
+colSums(is.na(bnb_df))
+```
+
+ 
  
 Let's try to understand the statistics by Room Type , As we are trying to predict price , Let's check what are the minimum, maximum, average price according to room type and neighbourhood group
 
@@ -43,10 +63,38 @@ Manhattan is costliest area, their average price is almoot $250.
 options(dplyr.summarise.inform = FALSE)
 bnb_df %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_price = min(price), avg_price = mean(price),max_price = max(price))
 ```
- 
+Converting "last_review" column to datetime column
+```{r}
+bnb_df[['last_review']] = strptime(bnb_df[['last_review']],format = "%Y-%m-%d")
+```
+
+Need to convert the categorical data to level 
+```{r}
+bnb_df[, c('neighbourhood_group', 'room_type', 'last_review')] = sapply(bnb_df[, c('neighbourhood_group', 'room_type', 'last_review')], unclass)
+```
+
+```{r}
+```
+
+
+Plot the features , find the correlation 
+
 ```{r}
 
 ```
+
+Do the hypothesis testing for relavant column 
+
+```{r}
+
+```
+
+
+Do the regression 
+```{r}
+
+```
+
 
  
 
