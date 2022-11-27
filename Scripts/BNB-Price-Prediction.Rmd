@@ -7,9 +7,12 @@ output: html_document
 
 ```{r}
 library('dplyr')
+library('psych')
 library('tidyverse')
 library('ggplot2')
 library('ggmap')
+library('GGally')
+library(caret)
 ```
 
 
@@ -74,21 +77,26 @@ ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
   theme(plot.title = element_text(face = "bold"))
 ```
 
+Top 10 Neighboorhoood in NYC 
 ```{r}
-
-ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
-  labs(title = "NYC Airbnb Neighbourhood vs Price", x = "Neighbourhood", y = "Price") +
-  theme(plot.title = element_text(face = "bold"))
 
 ```
 
 
 
+Import NYC Map and show datapoint , according to price, which are costly neighboorhood and preferrred one
+```{r}
+
+```
 
 
 Need to convert the categorical data to level 
 ```{r}
-bnb_df[, c('neighbourhood_group', 'room_type')] = sapply(bnb_df[, c('neighbourhood_group', 'room_type')],unclass)
+bnb_df$neighbourhood = as.factor(bnb_df$neighbourhood)
+bnb_df$neighbourhood_group = as.factor(bnb_df$neighbourhood_group)
+bnb_df$room_type = as.factor(bnb_df$room_type)
+bnb_df$last_review = as.POSIXct(bnb_df$last_review, format="%Y-%m-%d", tz="UTC")
+
 ```
 
 ```{r}
@@ -99,20 +107,46 @@ summary.default(bnb_df)
 head(bnb_df)
 ```
 
+Filter the Categorical Columns, to get the correlation of matrix
+```{r}
+filter_cat_bnb_df = bnb_df [,c("id","host_id","neighbourhood_group","neighbourhood", "latitude", "longitude", "room_type", "price", "minimum_nights", "number_of_reviews" ,"last_review", "reviews_per_month", "calculated_host_listings_count","availability_365")] 
+```
+
 
 Plot the features , find the correlation 
 
 ```{r}
-
+corr_bnb_df =  bnb_df [,c("id","neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")] 
+corr_bnb_df = corr_bnb_df[, sapply(corr_bnb_df, is.numeric)]
+corr_bnb_df = corr_bnb_df[complete.cases(corr_bnb_df),]
 ```
-
-Do the hypothesis testing for relavant column 
 
 ```{r}
+pairs.panels(corr_bnb_df, method = "pearson", hist.col = "#00AFBB",density = TRUE,ellipses = TRUE)
+```
+
+Machine Learning 
+
+-Data Split
+```{r}
+bnb_df_index = createDataPartition(filter_cat_bnb_df$price, p =.70,list=FALSE)
+bnb_df_train =  filter_cat_bnb_df[bnb_df_index,] 
+bnb_df_test =   filter_cat_bnb_df[-bnb_df_index,] 
 
 ```
 
+```{r}
+summary.default(bnb_df_train)
+```
 
+
+```{r}
+bnb_model = lm(price ~ id,host_id,neighbourhood_group, latitude, longitude,room_type, minimum_nights, number_of_reviews ,last_review, reviews_per_month, calculated_host_listings_count,availability_365 , data=bnb_df_train)
+summary(bnb_model)
+```
+
+
+Do the hypothesis testing for relavant column 
 Do the regression 
 ```{r}
 
