@@ -135,15 +135,24 @@ bnb_df_test =   filter_cat_bnb_df[-bnb_df_index,]
 
 ```
 
-```{r}
-summary.default(bnb_df_train)
-```
 
-
+Excluding the Neighbourhood column and other Categorical column, We have included all the other variable and created Linear Regression model.
 ```{r}
-bnb_model = lm(price ~ id,host_id,neighbourhood_group, latitude, longitude,room_type, minimum_nights, number_of_reviews ,last_review, reviews_per_month, calculated_host_listings_count,availability_365 , data=bnb_df_train)
+bnb_model = lm(price ~ id + host_id + neighbourhood_group + latitude+  longitude + room_type+ minimum_nights + number_of_reviews +last_review+ reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
 summary(bnb_model)
 ```
+
+
+```{r}
+plot(bnb_model)
+```
+
+```{r}
+bnb_model_two = lm(price ~ id + neighbourhood_group + latitude+  longitude + room_type + minimum_nights  + calculated_host_listings_count + availability_365 , data=bnb_df_train)
+summary(bnb_model_two)
+```
+
+
 
 
 Do the hypothesis testing for relavant column 
