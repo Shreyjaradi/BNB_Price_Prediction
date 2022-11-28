@@ -43,18 +43,24 @@ cat("\nNeighbourhood group : ",unique(bnb_df$neighbourhood_group))
 There are 1052 missing values in "reviews_per_month" and "last_review" column,
 as this are the column for datetime and number of reviews  last_review, 
 we can replace it with NA for last_review and 0 for reviews_per_month.
+
 ```{r}
-colSums(is.na(bnb_df))
+naniar::gg_miss_var(bnb_df) +
+  theme_minimal()+
+  labs(y = "Look at all the Missing Values") 
 ```
+
 
 ```{r}
 bnb_df['last_review'][is.na(bnb_df['last_review'])] = 'NA'
 bnb_df['reviews_per_month'][is.na(bnb_df['reviews_per_month'])] = 0
-
+bnb_df = bnb_df[(bnb_df$price!=0),]
 ```
 
 ```{r}
-colSums(is.na(bnb_df))
+naniar::gg_miss_var(bnb_df) +
+  theme_minimal()+
+  labs(y = "Look at all the Missing Values") 
 ```
 
  
@@ -90,6 +96,12 @@ Import NYC Map and show datapoint , according to price, which are costly neighbo
 ```
 
 
+Do more Visualisation if possible ! - and find out some insights about our data
+```{r}
+
+```
+
+
 Need to convert the categorical data to level 
 ```{r}
 bnb_df$neighbourhood = as.factor(bnb_df$neighbourhood)
@@ -113,10 +125,9 @@ filter_cat_bnb_df = bnb_df [,c("id","host_id","neighbourhood_group","neighbourho
 ```
 
 
-Plot the features , find the correlation 
 
 ```{r}
-corr_bnb_df =  bnb_df [,c("id","neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")] 
+corr_bnb_df =  bnb_df [,c("neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")] 
 corr_bnb_df = corr_bnb_df[, sapply(corr_bnb_df, is.numeric)]
 corr_bnb_df = corr_bnb_df[complete.cases(corr_bnb_df),]
 ```
@@ -125,38 +136,67 @@ corr_bnb_df = corr_bnb_df[complete.cases(corr_bnb_df),]
 pairs.panels(corr_bnb_df, method = "pearson", hist.col = "#00AFBB",density = TRUE,ellipses = TRUE)
 ```
 
-Machine Learning 
+Machine Learning - Linear Regression
 
 -Data Split
 ```{r}
 bnb_df_index = createDataPartition(filter_cat_bnb_df$price, p =.70,list=FALSE)
 bnb_df_train =  filter_cat_bnb_df[bnb_df_index,] 
 bnb_df_test =   filter_cat_bnb_df[-bnb_df_index,] 
-
 ```
 
 
-Excluding the Neighbourhood column and other Categorical column, We have included all the other variable and created Linear Regression model.
+Excluding Features Reasons : 
+
+- id: not relevant because it's unique number
+- name: not relevant because it's  Identifier
+- host_id: not relevant because it's unique number 
+- host_name: not relevant because it's  Identifier
+- neighbourhood: as we already take neighbourhood_group in our study, it's a redudant feature
+- last_review: datetime variable, unnecessarily will complicate our model
+
 ```{r}
-bnb_model = lm(price ~ id + host_id + neighbourhood_group + latitude+  longitude + room_type+ minimum_nights + number_of_reviews +last_review+ reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
+bnb_model = lm(price ~  neighbourhood_group + scale(latitude) +  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
 summary(bnb_model)
+
 ```
 
-
+The $R^2$ values is two low for this model, we can transform our Price feature and 
 ```{r}
 plot(bnb_model)
 ```
 
+Doing the Logarithmic Transformation on Y(Price) Predicted feature and 
+Scaling the Latitude and Longitude Variable, 
 ```{r}
-bnb_model_two = lm(price ~ id + neighbourhood_group + latitude+  longitude + room_type + minimum_nights  + calculated_host_listings_count + availability_365 , data=bnb_df_train)
+bnb_model_two = lm(log(price) ~  neighbourhood_group + scale(latitude)+  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
 summary(bnb_model_two)
+```
+
+
+The 2nd model Q-Q plot, is much better than the previous model. We can clearly see that, and if you see the $R^2$ values also seems to be better than our previous model.
+
+```{r}
+plot(bnb_model_two)
+```
+
+
+```{r}
+predicted_val = predict(bnb_model_two, newdata = bnb_df_test)
+
+bnb_lr_RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
+bnb_lr_SSE = sum((bnb_df_test$price - predicted_val)**2)
+bnb_lr_SSR = sum((predicted_val - mean(bnb_df_test$price)) ** 2)
+bnb_lr_R2 = 1 - bnb_lr_SSE/(bnb_lr_SSE + bnb_lr_SSR)
+bnb_lr_RMSE_regression
+bnb_lr_SSE
+bnb_lr_SSR
+bnb_lr_R2
 ```
 
 
 
 
-Do the hypothesis testing for relavant column 
-Do the regression 
 ```{r}
 
 ```
