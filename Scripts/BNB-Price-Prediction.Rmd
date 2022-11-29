@@ -7,12 +7,14 @@ output: html_document
 
 ```{r}
 library('dplyr')
-library('psych')
-library('tidyverse')
-library('ggplot2')
-library('ggmap')
-library('GGally')
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(psych)
+library(ggmap)
+library(GGally)
 library(caret)
+library(glmnet)
 ```
 
 
@@ -96,7 +98,13 @@ ggplot(data = grp_neighbourhood_df, aes(x = neighbourhood_group, y = price)) +
 
 
 ```{r}
+grpbynhood_df = bnb_df %>% 
+  group_by(neighbourhood, price) %>% 
+  tally(sort = TRUE) %>% 
+  filter(row_number() <= 5)
 
+ggplot(data = grpbynhood_df, aes(x = neighbourhood, y = price)) +
+  geom_col() 
 ```
 
 
@@ -201,8 +209,6 @@ predicted_val = exp(predicted_val)
 
 
 
-
-
 ```{r}
 RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
 SSE = sum((bnb_df_test$price - predicted_val)**2)
@@ -214,9 +220,82 @@ SSR
 R2
 ```
 
+Ridge Regression 
 
 ```{r}
-
+x_bnb_df = data.matrix(bnb_df_train[, c("neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
+y_bnb_df = bnb_df_train$price
 ```
+
+```{r}
+ridge_model = glmnet(x_bnb_df, y_bnb_df, alpha=0)
+ridge_summary_model = summary(ridge_model)
+```
+
+```{r}
+ridge_cv_model = cv.glmnet(x_bnb_df, y_bnb_df, alpha=0)
+ridge_lambda_val = ridge_cv_model$lambda.min
+ridge_lambda_val
+```
+
+```{r}
+plot(ridge_cv_model)
+```
+
+```{r}
+ridge_best_model = glmnet(x_bnb_df, y_bnb_df, alpha=0, lambda = ridge_lambda_val)
+coef(ridge_best_model)
+```
+
+```{r}
+plot(ridge_model,xvar='lambda')
+```
+The $R^2$ is -0.36%, that is best model
+```{r}
+test_ridge_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews", "price" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
+y_ridge_predicted = predict(ridge_model, s = ridge_lambda_val, newx = test_ridge_data_x)
+```
+
+```{r}
+reg_sst = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)
+reg_sst
+reg_sse = sum((y_ridge_predicted - bnb_df_test$price)^2)
+reg_sse
+reg_rsq = 1 - reg_sse/reg_sst
+reg_rsq
+```
+
+
+Lasso Regression 
+```{r}
+lasso_cv_model = cv.glmnet(x_bnb_df, y_bnb_df, alpha=1)
+lasso_lambda_val = lasso_cv_model$lambda.min
+lasso_lambda_val
+```
+
+```{r}
+plot(lasso_cv_model)
+```
+
+```{r}
+lasso_best_model = glmnet(x_bnb_df, y_bnb_df, alpha=1, lambda = lasso_lambda_val)
+coef(lasso_best_model)
+```
+
+
+The $R^2$ is -0.37%, that is best model
+```{r}
+test_lasso_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month","price", "calculated_host_listings_count","availability_365")])
+predict_lass_val = predict(lasso_best_model, s = lasso_lambda_val, newx = test_lasso_data_x)
+```
+
+```{r}
+lasso_sst = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)
+lasso_sse = sum((predict_lass_val - bnb_df_test$price)^2)
+lass_rsq = 1 - lasso_sse/lasso_sst
+lass_rsq
+```
+
+
 
 
