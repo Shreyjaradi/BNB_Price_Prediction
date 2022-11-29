@@ -202,7 +202,8 @@ plot(bnb_model_two)
 
 
 ```{r}
-predicted_val = predict(bnb_model_two, bnb_df_test[,-8])
+y_bnb_df_test = bnb_df_test[,c("neighbourhood_group", "latitude", "longitude", "room_type", "minimum_nights", "number_of_reviews" , "reviews_per_month", "calculated_host_listings_count","availability_365")] 
+predicted_val = predict(bnb_model_two, y_bnb_df_test)
 predicted_val = exp(predicted_val)
 ```
 
@@ -294,6 +295,7 @@ lasso_sse = sum((predict_lass_val - bnb_df_test$price)^2)
 lass_rsq = 1 - lasso_sse/lasso_sst
 lass_rsq
 ```
+
 
 
 
