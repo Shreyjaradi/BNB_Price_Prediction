@@ -74,6 +74,7 @@ bnb_df %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_pri
 ```
 
 
+Price in Neighbourhood_group by room Type 
 
 ```{r}
 ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
@@ -83,7 +84,17 @@ ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
   theme(plot.title = element_text(face = "bold"))
 ```
 
-Top 10 Neighboorhoood in NYC 
+Costliest Neighbourhood 
+```{r}
+grp_neighbourhood_df = bnb_df %>% 
+  group_by(neighbourhood_group, price) %>% 
+  tally(sort = TRUE) %>% 
+  filter(row_number() <= 5)
+ggplot(data = grp_neighbourhood_df, aes(x = neighbourhood_group, y = price)) +
+  geom_col() 
+```
+
+
 ```{r}
 
 ```
@@ -163,6 +174,7 @@ summary(bnb_model)
 
 The $R^2$ values is two low for this model, we can transform our Price feature and 
 ```{r}
+par(mfrow=c(2,2))
 plot(bnb_model)
 ```
 
@@ -177,30 +189,34 @@ summary(bnb_model_two)
 The 2nd model Q-Q plot, is much better than the previous model. We can clearly see that, and if you see the $R^2$ values also seems to be better than our previous model.
 
 ```{r}
+par(mfrow=c(2,2))
 plot(bnb_model_two)
 ```
 
 
 ```{r}
-predicted_val = predict(bnb_model_two, newdata = bnb_df_test)
-
-bnb_lr_RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
-bnb_lr_SSE = sum((bnb_df_test$price - predicted_val)**2)
-bnb_lr_SSR = sum((predicted_val - mean(bnb_df_test$price)) ** 2)
-bnb_lr_R2 = 1 - bnb_lr_SSE/(bnb_lr_SSE + bnb_lr_SSR)
-bnb_lr_RMSE_regression
-bnb_lr_SSE
-bnb_lr_SSR
-bnb_lr_R2
+predicted_val = predict(bnb_model_two, bnb_df_test[,-8])
+predicted_val = exp(predicted_val)
 ```
 
 
+
+
+
+```{r}
+RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
+SSE = sum((bnb_df_test$price - predicted_val)**2)
+SSR = sum((predicted_val - mean(bnb_df_test$price)) ** 2)
+R2 = 1 - SSE/(SSE + SSR)
+RMSE_regression
+SSE
+SSR
+R2
+```
 
 
 ```{r}
 
 ```
 
-
- 
 
