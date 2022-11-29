@@ -222,7 +222,7 @@ R2
 Ridge Regression 
 
 ```{r}
-x_bnb_df = data.matrix(bnb_df_train[, c("neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
+x_bnb_df = data.matrix(bnb_df_train[, c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 y_bnb_df = bnb_df_train$price
 ```
 
@@ -249,9 +249,9 @@ coef(ridge_best_model)
 ```{r}
 plot(ridge_model,xvar='lambda')
 ```
-The $R^2$ is -0.36%, that is best model
+The $R^2$ is 0.079%, that is best model
 ```{r}
-test_ridge_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews", "price" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
+test_ridge_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 y_ridge_predicted = predict(ridge_model, s = ridge_lambda_val, newx = test_ridge_data_x)
 ```
 
@@ -282,9 +282,9 @@ coef(lasso_best_model)
 ```
 
 
-The $R^2$ is -0.37%, that is best model
+The $R^2$ is 0.079%, that is best model
 ```{r}
-test_lasso_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month","price", "calculated_host_listings_count","availability_365")])
+test_lasso_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 predict_lass_val = predict(lasso_best_model, s = lasso_lambda_val, newx = test_lasso_data_x)
 ```
 
@@ -294,6 +294,7 @@ lasso_sse = sum((predict_lass_val - bnb_df_test$price)^2)
 lass_rsq = 1 - lasso_sse/lasso_sst
 lass_rsq
 ```
+
 
 
 
