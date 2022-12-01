@@ -86,7 +86,8 @@ Outlier Identification
 Quant = quantile(bnb_df$price, probs=c(.25, .75), na.rm = T)
 iqr_val = IQR(bnb_df$price, na.rm = T)
 bnb_df_new = bnb_df %>% filter(price > (Quant[1] - 1.5*iqr_val) & 
-                       price < (Quant[2] + 1.5*iqr_val))  
+                       price < (Quant[2] + 1.5*iqr_val))
+
 ```
  
 Outlier Visualization 
@@ -134,6 +135,14 @@ ggplot(data = grp_neighbourhood_df, aes(x = neighbourhood_group, y = price)) +
   geom_col(fill="lightblue", lwd=1.5) + 
 scale_fill_manual(values=pal) + theme_bw(base_size = 10)
 ```
+Top 10 Neighbourhood 
+```{r}
+bnb_df_new %>% group_by(neighbourhood) %>%
+  dplyr::summarize(num_listings = n(), borough = unique(neighbourhood_group)) %>%
+  top_n(n = 10, wt = num_listings) %>% ggplot(aes(x = fct_reorder(neighbourhood, num_listings),y = num_listings, fill = borough)) +geom_col() + coord_flip() +theme(legend.position = "bottom") + labs(title = "Top 10 neighborhoods", x = "Neighborhood", y = "Number of listings")
+```
+
+
 
 Import NYC Map and show datapoint , according to price, which are costly neighboorhood and preferrred one
 ```{r}
@@ -149,14 +158,19 @@ bnb_df = bnb_df %>%
     ))
 ```
 
+
+Price range within Neighbourhood
 ```{r}
-states = map_data("state")
-new_york = subset(states, region %in% c("new york"))
-ggplot(data = new_york) +
-    geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "white") + 
-    geom_point(data=bnb_df, aes(x=longitude, y=latitude, color = avg_price), alpha=0.3) +
-    coord_fixed(xlim = c(-74.4, -73.5),  ylim = c(40.3, 41), ratio = 1.2) + 
-    scale_fill_gradient(low = "blue", high = "red")
+height = max(bnb_df$latitude) - min(bnb_df$latitude)
+width = max(bnb_df$longitude) - min(bnb_df$longitude)
+LA_borders = c(bottom  = min(bnb_df$latitude)  - 0.1 * height, 
+                top     = max(bnb_df$latitude)  + 0.1 * height,
+                left    = min(bnb_df$longitude) - 0.1 * width,
+                right   = max(bnb_df$longitude) + 0.1 * width)
+
+map = get_stamenmap(LA_borders, zoom = 10, maptype = "toner-lite")
+ggmap(map) + geom_point(data = bnb_df, mapping = aes(x = longitude, y = latitude, 
+                                               col = log(price))) + scale_color_distiller(palette = "RdYlGn", direction = 1)
 ```
 
 ```{r}
@@ -166,6 +180,13 @@ ggplot(data = new_york) +
     coord_fixed(xlim = c(-74.4, -73.5),  ylim = c(40.3, 41), ratio = 1.2) + 
     scale_fill_gradient(low = "blue", high = "red")
 ```
+
+Relationship between price and num of reviews 
+```{r}
+ggplot(bnb_df_new, aes(number_of_reviews, price)) + theme(axis.title = element_text(), axis.title.x = element_text()) +
+geom_point(aes(size = price), alpha = 0.05, color = "blue") + xlab("No. of reviews") + ylab("Price") + ggtitle("Relationship btwen number of reviews", subtitle = "Expensive objects have small no. of reviews")
+```
+
 
 Differences in Means that we need to account for an interaction term o in our Regression model
 ```{r}
@@ -268,7 +289,6 @@ R2
 ```
 
 #### Ridge Regression 
-
 ```{r}
 x_bnb_df = data.matrix(bnb_df_train[, c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 y_bnb_df = bnb_df_train$price
@@ -333,6 +353,9 @@ test_lasso_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type
 predict_lass_val = predict(lasso_best_model, s = lasso_lambda_val, newx = test_lasso_data_x)
 ```
 
+SST  - Sum of Square of total
+SSE  - Sum of Square of Error
+R-SQ  - R- Square value 
 ```{r}
 lasso_sst = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)
 lasso_sse = sum((predict_lass_val - bnb_df_test$price)^2)
@@ -342,6 +365,7 @@ lass_rsq
 
 
 As the regression models are not that usefull to predict the price of bnb , using the other feature, To predict the price using this type of dataset, it is best to use the Random Forest classifier.
+
 
 ```{r}
 set.seed(4543)
@@ -357,6 +381,9 @@ plot(rf_model)
 predict_rf_val = predict(rf_model, bnb_df_test)
 ```
 
+MSE : Mean Square Error 
+vary : Variance
+RSqr : R - Square vale  
 ```{r}
 MSE_rf = sum((predict_rf_val - bnb_df_test$price)^2)/nrow(bnb_df_test)
 vary_rf = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)/(nrow(bnb_df_test)-1)
@@ -365,6 +392,7 @@ MSE_rf
 vary_rf
 Rsqr_rf
 ```
+
 
 
 
