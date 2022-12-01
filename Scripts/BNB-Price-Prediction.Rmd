@@ -14,8 +14,12 @@ library(ggmap)
 library(GGally)
 library(caret)
 library(glmnet)
+library(randomForest)
+library(e1071)
+library(lmvar)
+library(maps)
+cat("Library loaded Successfully")
 ```
-
 
 ```{r}
 bnb_df = read.csv(file='../data/AB_NYC_2019.csv') 
@@ -36,10 +40,10 @@ summary.default(bnb_df)
 **last_review  :** This is date column we can convert it to datetime column. 
 
 ```{r}
-cat("Room Type : ", unique(bnb_df$room_type))
-cat("\nNeighbourhood group : ",unique(bnb_df$neighbourhood_group))
+cat("Room Type : ", length(unique(bnb_df$room_type)))
+cat("\nNeighbourhood group : ",length(unique(bnb_df$neighbourhood_group)))
+cat("\nNeighbourhood : ",length(unique(bnb_df$neighbourhood)))
 ```
-
 
 There are 1052 missing values in "reviews_per_month" and "last_review" column,
 as this are the column for datetime and number of reviews  last_review, 
@@ -50,7 +54,6 @@ naniar::gg_miss_var(bnb_df) +
   theme_minimal()+
   labs(y = "Look at all the Missing Values") 
 ```
-
 
 ```{r}
 bnb_df['last_review'][is.na(bnb_df['last_review'])] = 'NA'
@@ -64,88 +67,139 @@ naniar::gg_miss_var(bnb_df) +
   labs(y = "Look at all the Missing Values") 
 ```
 
+```{r}
+skewness(bnb_df$price) # > 1 = highly skewed towards the right
+less_price_bnb = bnb_df %>% filter(price < 1000)
+skewness(less_price_bnb$price) # > 1 but much less skewed than before
+```
  
+```{r}
+par(mfrow=c(1,2))
+qqnorm(less_price_bnb$price)
+qqline(less_price_bnb$price)
+qqnorm(bnb_df$price)
+qqline(bnb_df$price)
+```
+
+Outlier Identification 
+```{r}
+Quant = quantile(bnb_df$price, probs=c(.25, .75), na.rm = T)
+iqr_val = IQR(bnb_df$price, na.rm = T)
+bnb_df_new = bnb_df %>% filter(price > (Quant[1] - 1.5*iqr_val) & 
+                       price < (Quant[2] + 1.5*iqr_val))  
+```
+ 
+Outlier Visualization 
+```{r}
+par(mfrow=c(2,1))
+options(repr.plot.width=12, repr.plot.height=6)
+boxplot(bnb_df_new$price, col = "yellow", horizontal = T, main = "After Removing Outliers - Price")
+boxplot(bnb_df$price, col = "green", horizontal = T, main = "Before Removing Outliers Price")
+```
  
 Let's try to understand the statistics by Room Type , As we are trying to predict price , Let's check what are the minimum, maximum, average price according to room type and neighbourhood group
 
 Manhattan is costliest area, their average price is almoot $250.
 ```{r}
 options(dplyr.summarise.inform = FALSE)
-bnb_df %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_price = min(price), avg_price = mean(price),max_price = max(price))
+bnb_df_new %>% group_by(room_type, neighbourhood_group) %>% dplyr::summarise(min_price = min(price), avg_price = mean(price),max_price = max(price))
 ```
-
-
 Price in Neighbourhood_group by room Type 
 
 ```{r}
-ggplot(bnb_df, aes(x = neighbourhood_group, y = price, fill = room_type)) +
+ggplot(bnb_df_new, aes(x = neighbourhood_group, y = price, fill = room_type)) +
   geom_bar(position = "dodge", stat = "identity") +
   theme_classic() +
   labs(title = "NYC Airbnb Neighbourhood vs Price", x = "Neighbourhood", y = "Price") +
   theme(plot.title = element_text(face = "bold"))
 ```
+Rental Price Distribution
+```{r}
+pal = c("olivedrab3", 'yellow', 'orange', 'grey50')
+options(repr.plot.width=14, repr.plot.height=7)
+ggplot(bnb_df_new, aes(price)) + 
+  geom_density(show.legend = F, lwd = 1.5, fill = "yellow") + 
+  scale_fill_manual(values=pal) + theme_bw(base_size = 10)  +
+  labs(title = "Price Disribution", x = "Price")
+```
 
 Costliest Neighbourhood 
 ```{r}
-grp_neighbourhood_df = bnb_df %>% 
+grp_neighbourhood_df = bnb_df_new %>% 
   group_by(neighbourhood_group, price) %>% 
   tally(sort = TRUE) %>% 
   filter(row_number() <= 5)
+options(repr.plot.width=14, repr.plot.height=7)
 ggplot(data = grp_neighbourhood_df, aes(x = neighbourhood_group, y = price)) +
-  geom_col() 
+  geom_col(fill="lightblue", lwd=1.5) + 
+scale_fill_manual(values=pal) + theme_bw(base_size = 10)
 ```
-
-
-```{r}
-grpbynhood_df = bnb_df %>% 
-  group_by(neighbourhood, price) %>% 
-  tally(sort = TRUE) %>% 
-  filter(row_number() <= 5)
-
-ggplot(data = grpbynhood_df, aes(x = neighbourhood, y = price)) +
-  geom_col() 
-```
-
-
 
 Import NYC Map and show datapoint , according to price, which are costly neighboorhood and preferrred one
 ```{r}
+bnb_df %>% group_by(neighbourhood_group) %>% dplyr::summarise(avg_price = mean(price))
 
+bnb_df = bnb_df %>%
+  mutate(avg_price = case_when(
+    endsWith(neighbourhood_group, "Bronx") ~ 87.57706,
+    endsWith(neighbourhood_group, "Brooklyn") ~ 124.43892,
+    endsWith(neighbourhood_group, "Manhattan") ~ 196.88490,
+    endsWith(neighbourhood_group, "Queens") ~ 99.51765,
+    endsWith(neighbourhood_group, "Staten Island") ~ 114.81233
+    ))
 ```
 
-
-Do more Visualisation if possible ! - and find out some insights about our data
 ```{r}
+states = map_data("state")
+new_york = subset(states, region %in% c("new york"))
+ggplot(data = new_york) +
+    geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "white") + 
+    geom_point(data=bnb_df, aes(x=longitude, y=latitude, color = avg_price), alpha=0.3) +
+    coord_fixed(xlim = c(-74.4, -73.5),  ylim = c(40.3, 41), ratio = 1.2) + 
+    scale_fill_gradient(low = "blue", high = "red")
+```
 
+```{r}
+ggplot(data = new_york) +
+    geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "white") + 
+    geom_point(data=bnb_df_new, aes(x=longitude, y=latitude, color = neighbourhood_group), alpha=0.3) +
+    coord_fixed(xlim = c(-74.4, -73.5),  ylim = c(40.3, 41), ratio = 1.2) + 
+    scale_fill_gradient(low = "blue", high = "red")
+```
+
+Differences in Means that we need to account for an interaction term o in our Regression model
+```{r}
+par(mfcol=c(1,2))
+boxplot(price ~ neighbourhood_group, data = bnb_df_new, frame = F, col = "lightgreen")
+boxplot(price ~ room_type, data = bnb_df_new, frame = F, col = "lightblue")
 ```
 
 
 Need to convert the categorical data to level 
 ```{r}
-bnb_df$neighbourhood = as.factor(bnb_df$neighbourhood)
-bnb_df$neighbourhood_group = as.factor(bnb_df$neighbourhood_group)
-bnb_df$room_type = as.factor(bnb_df$room_type)
-bnb_df$last_review = as.POSIXct(bnb_df$last_review, format="%Y-%m-%d", tz="UTC")
+bnb_df_new$neighbourhood = as.factor(bnb_df_new$neighbourhood)
+bnb_df_new$neighbourhood_group = as.factor(bnb_df_new$neighbourhood_group)
+bnb_df_new$room_type = as.factor(bnb_df_new$room_type)
+bnb_df_new$last_review = as.POSIXct(bnb_df_new$last_review, format="%Y-%m-%d", tz="UTC")
 
 ```
 
 ```{r}
-summary.default(bnb_df)
+summary.default(bnb_df_new)
 ```
 
 ```{r}
-head(bnb_df)
+head(bnb_df_new)
 ```
 
 Filter the Categorical Columns, to get the correlation of matrix
 ```{r}
-filter_cat_bnb_df = bnb_df [,c("id","host_id","neighbourhood_group","neighbourhood", "latitude", "longitude", "room_type", "price", "minimum_nights", "number_of_reviews" ,"last_review", "reviews_per_month", "calculated_host_listings_count","availability_365")] 
+filter_cat_bnb_df = bnb_df_new [,c("id","host_id","neighbourhood_group","neighbourhood", "latitude", "longitude", "room_type", "price", "minimum_nights", "number_of_reviews" ,"last_review", "reviews_per_month", "calculated_host_listings_count","availability_365")] 
 ```
 
 
-
 ```{r}
-corr_bnb_df =  bnb_df [,c("neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")] 
+corr_bnb_df =  bnb_df_new [,c("neighbourhood_group", "room_type", "price", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")] 
 corr_bnb_df = corr_bnb_df[, sapply(corr_bnb_df, is.numeric)]
 corr_bnb_df = corr_bnb_df[complete.cases(corr_bnb_df),]
 ```
@@ -153,16 +207,14 @@ corr_bnb_df = corr_bnb_df[complete.cases(corr_bnb_df),]
 ```{r}
 pairs.panels(corr_bnb_df, method = "pearson", hist.col = "#00AFBB",density = TRUE,ellipses = TRUE)
 ```
+####Machine Learning - Linear Regression
 
-Machine Learning - Linear Regression
-
--Data Split
+Data Split into train and test !!
 ```{r}
 bnb_df_index = createDataPartition(filter_cat_bnb_df$price, p =.70,list=FALSE)
 bnb_df_train =  filter_cat_bnb_df[bnb_df_index,] 
 bnb_df_test =   filter_cat_bnb_df[-bnb_df_index,] 
 ```
-
 
 Excluding Features Reasons : 
 
@@ -174,7 +226,7 @@ Excluding Features Reasons :
 - last_review: datetime variable, unnecessarily will complicate our model
 
 ```{r}
-bnb_model = lm(price ~  neighbourhood_group + scale(latitude) +  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
+bnb_model = lm(price ~ neighbourhood_group + scale(latitude) +  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
 summary(bnb_model)
 
 ```
@@ -184,14 +236,12 @@ The $R^2$ values is two low for this model, we can transform our Price feature a
 par(mfrow=c(2,2))
 plot(bnb_model)
 ```
-
 Doing the Logarithmic Transformation on Y(Price) Predicted feature and 
 Scaling the Latitude and Longitude Variable, 
 ```{r}
-bnb_model_two = lm(log(price) ~  neighbourhood_group + scale(latitude)+  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
+bnb_model_two = lm(log(price) ~   neighbourhood_group + scale(latitude)+  scale(longitude) + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365 , data=bnb_df_train)
 summary(bnb_model_two)
 ```
-
 
 The 2nd model Q-Q plot, is much better than the previous model. We can clearly see that, and if you see the $R^2$ values also seems to be better than our previous model.
 
@@ -200,14 +250,11 @@ par(mfrow=c(2,2))
 plot(bnb_model_two)
 ```
 
-
 ```{r}
 y_bnb_df_test = bnb_df_test[,c("neighbourhood_group", "latitude", "longitude", "room_type", "minimum_nights", "number_of_reviews" , "reviews_per_month", "calculated_host_listings_count","availability_365")] 
 predicted_val = predict(bnb_model_two, y_bnb_df_test)
 predicted_val = exp(predicted_val)
 ```
-
-
 
 ```{r}
 RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
@@ -220,7 +267,7 @@ SSR
 R2
 ```
 
-Ridge Regression 
+#### Ridge Regression 
 
 ```{r}
 x_bnb_df = data.matrix(bnb_df_train[, c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
@@ -241,7 +288,6 @@ ridge_lambda_val
 ```{r}
 plot(ridge_cv_model)
 ```
-
 ```{r}
 ridge_best_model = glmnet(x_bnb_df, y_bnb_df, alpha=0, lambda = ridge_lambda_val)
 coef(ridge_best_model)
@@ -250,7 +296,7 @@ coef(ridge_best_model)
 ```{r}
 plot(ridge_model,xvar='lambda')
 ```
-The $R^2$ is 0.079%, that is best model
+The $R^2$ is 0.39%, that is best model
 ```{r}
 test_ridge_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 y_ridge_predicted = predict(ridge_model, s = ridge_lambda_val, newx = test_ridge_data_x)
@@ -265,8 +311,7 @@ reg_rsq = 1 - reg_sse/reg_sst
 reg_rsq
 ```
 
-
-Lasso Regression 
+#### Lasso Regression 
 ```{r}
 lasso_cv_model = cv.glmnet(x_bnb_df, y_bnb_df, alpha=1)
 lasso_lambda_val = lasso_cv_model$lambda.min
@@ -282,8 +327,7 @@ lasso_best_model = glmnet(x_bnb_df, y_bnb_df, alpha=1, lambda = lasso_lambda_val
 coef(lasso_best_model)
 ```
 
-
-The $R^2$ is 0.079%, that is best model
+The $R^2$ is 0.39%, that is best model
 ```{r}
 test_lasso_data_x = data.matrix(bnb_df_test[,c("neighbourhood_group", "room_type", "minimum_nights", "number_of_reviews" ,"reviews_per_month", "calculated_host_listings_count","availability_365")])
 predict_lass_val = predict(lasso_best_model, s = lasso_lambda_val, newx = test_lasso_data_x)
@@ -297,6 +341,30 @@ lass_rsq
 ```
 
 
+As the regression models are not that usefull to predict the price of bnb , using the other feature, To predict the price using this type of dataset, it is best to use the Random Forest classifier.
+
+```{r}
+set.seed(4543)
+#rf_train = bnb_df_train[, c("neighbourhood_group", "latitude", "longitude", "room_type", "minimum_nights", "number_of_reviews" , #"reviews_per_month" , "calculated_host_listings_count" , "availability_365")]
+rf_model = randomForest(price ~ neighbourhood_group + latitude+  longitude + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365, data=bnb_df_train, na.action = na.omit)
+rf_model
+```
+
+```{r}
+plot(rf_model)
+```
+```{r}
+predict_rf_val = predict(rf_model, bnb_df_test)
+```
+
+```{r}
+MSE_rf = sum((predict_rf_val - bnb_df_test$price)^2)/nrow(bnb_df_test)
+vary_rf = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)/(nrow(bnb_df_test)-1)
+Rsqr_rf = 1 - (MSE_rf/vary_rf)
+MSE_rf
+vary_rf
+Rsqr_rf
+```
 
 
 
