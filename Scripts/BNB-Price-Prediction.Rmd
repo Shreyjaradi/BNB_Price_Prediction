@@ -174,6 +174,8 @@ ggmap(map) + geom_point(data = bnb_df, mapping = aes(x = longitude, y = latitude
 ```
 
 ```{r}
+states = map_data("state")
+new_york = subset(states, region %in% c("new york"))
 ggplot(data = new_york) +
     geom_polygon(aes(x = long, y = lat, group = group), fill = "gray", color = "white") + 
     geom_point(data=bnb_df_new, aes(x=longitude, y=latitude, color = neighbourhood_group), alpha=0.3) +
@@ -282,10 +284,10 @@ RMSE_regression = sqrt(mean( (bnb_df_test$price - predicted_val)**2 ))
 SSE = sum((bnb_df_test$price - predicted_val)**2)
 SSR = sum((predicted_val - mean(bnb_df_test$price)) ** 2)
 R2 = 1 - SSE/(SSE + SSR)
-RMSE_regression
-SSE
-SSR
-R2
+cat("Linear Regression RMSE on Test Dataset : ",RMSE_regression)
+cat("\nLinear Regression  SSE on Test Dataset  : ",SSE)
+cat("\nLinear Regression  SSR on Test Dataset  : ",SSR)
+cat("\nLinear Regression  R-Square  on Test Dataset  : ",R2)
 ```
 
 #### Ridge Regression 
@@ -324,11 +326,11 @@ y_ridge_predicted = predict(ridge_model, s = ridge_lambda_val, newx = test_ridge
 
 ```{r}
 reg_sst = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)
-reg_sst
 reg_sse = sum((y_ridge_predicted - bnb_df_test$price)^2)
-reg_sse
 reg_rsq = 1 - reg_sse/reg_sst
-reg_rsq
+cat("Ridge SST on Test Dataset : ",reg_sst)
+cat("\nRidge SSE on Test Dataset  : ",reg_sse)
+cat("\nRidge R-Square  on Test Dataset  : ",reg_rsq)
 ```
 
 #### Lasso Regression 
@@ -360,7 +362,10 @@ R-SQ  - R- Square value
 lasso_sst = sum((bnb_df_test$price - mean(bnb_df_test$price))^2)
 lasso_sse = sum((predict_lass_val - bnb_df_test$price)^2)
 lass_rsq = 1 - lasso_sse/lasso_sst
-lass_rsq
+cat("Lasso SST on Test Dataset : ",lasso_sst)
+cat("\nLasso SSE on Test Dataset  : ",lasso_sse)
+cat("\nLasso R-Square  on Test Dataset  : ",lass_rsq)
+
 ```
 
 
