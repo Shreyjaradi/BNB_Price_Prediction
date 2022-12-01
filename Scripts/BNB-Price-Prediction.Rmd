@@ -188,7 +188,7 @@ ggplot(data = new_york) +
 Relationship between price and num of reviews 
 ```{r}
 ggplot(bnb_df_new, aes(number_of_reviews, price)) + theme(axis.title = element_text(), axis.title.x = element_text()) +
-geom_point(aes(size = price), alpha = 0.05, color = "blue") + xlab("No. of reviews") + ylab("Price") + ggtitle("Relationship btwen number of reviews", subtitle = "Expensive objects have small no. of reviews")
+geom_point(aes(size = price), alpha = 0.05, color = "blue") + xlab("No. of reviews") + ylab("Price") + ggtitle("Relationship between number of reviews", subtitle = "Expensive objects have small no. of reviews")
 ```
 
 
