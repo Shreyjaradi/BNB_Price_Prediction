@@ -298,13 +298,24 @@ bnb_model_three = lm(log(price) ~   neighbourhood, data=bnb_df_train)
 summary(bnb_model_three)
 ```
 
-Predict price by different neighbourhood, room type, availability_365, minimum_nights + number of reviews 
+
 ```{r}
-bnb_model_four = lm(log(price) ~  neighbourhood + room_type + availability_365 + minimum_nights + number_of_reviews , data=bnb_df_train)
+bnb_model_four = lm(log(price) ~  room_type, data=bnb_df_train)
 summary(bnb_model_four)
 ```
 
-#Decision Trees 
+```{r}
+bnb_model_five = lm(log(price) ~  neighbourhood_group, data=bnb_df_train)
+summary(bnb_model_five)
+```
+
+Predict price by different neighbourhood, room type, availability_365, minimum_nights + number of reviews 
+```{r}
+bnb_model_six = lm(log(price) ~  neighbourhood + room_type + availability_365 + minimum_nights + number_of_reviews , data=bnb_df_train)
+summary(bnb_model_six)
+```
+
+#### Decision Tree Regressor
 
 ```{r}
 dt_bnb_model = rpart(formula = price ~ neighbourhood_group + latitude+  longitude + room_type+ minimum_nights + number_of_reviews + reviews_per_month + calculated_host_listings_count + availability_365, data = bnb_df_train,method = "anova")
@@ -356,6 +367,8 @@ cat("\nRandom Forest R-Square  on Test Dataset  : ",Rsqr_rf)
 ```
 
 
-
+```{r}
+varImpPlot(rf_model) 
+```
 
 
